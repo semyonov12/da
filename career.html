@@ -1,0 +1,1986 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Карьера</title>
+
+	<!-- новые стили-->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css">
+	<link rel="stylesheet" href="css/style.css">
+
+
+
+	<!-- стили с сайта -->
+	<link rel="stylesheet" href="https://market-da.ru/css/all2.css?v=11818&_v=20240206191821" type="text/css" />
+	<script type="text/javascript" src="https://market-da.ru/js/jquery-1.10.2.min.js"></script>
+	<script type="text/javascript" src="https://market-da.ru/js/jquery.main2.js"></script>
+
+
+	<script
+		src="https://api-maps.yandex.ru/2.1/?apikey=39886e8d-931b-421a-b2a4-f90f92e1d251&load=package.full&lang=ru-RU"
+		type="text/javascript"></script>
+	<script>
+		ymaps.ready(init);
+		var myMap, myCollection, geoResult;
+		var routess;
+		function init() {
+
+			var suggestView = new ymaps.SuggestView('address');
+			myMap = new ymaps.Map("map", { center: [55.7250, 37.6470], zoom: 11, controls: ["default", "routeEditor"] });
+			//myMap.behaviors.disable('scrollZoom');
+			//myMap.behaviors.disable('drag');
+
+			myCollection = new ymaps.GeoObjectCollection();
+
+
+
+			$.getJSON("https://market-da.ru/shops/ajaxmap.html", function (json) {
+				console.log(14);
+				if (json.status == 'OK') {
+
+					myCollection.removeAll();
+					for (i = 0; i < json.markers.length; i++) {
+
+						console.log(json.markers[i].lon);
+
+
+						myPlacemark = new ymaps.Placemark([json.markers[i].lon, json.markers[i].lat], {
+
+							balloonContentHeader: '<h2">' + json.markers[i].cname + '</h2><img style="float:right" src="img/icon-80.png">',
+							balloonContentBody: '<div style="min-width:100px;"><img class="typpea" src="' + json.markers[i].adrtype + '"><span class="nazvadr">' + json.markers[i].nazvadr + '</span><span class="vrrab">' + json.markers[i].vrrab + '</span></div>'
+						}, {
+							// Необходимо указать данный тип макета.
+							iconLayout: 'default#image',
+							iconImageHref: 'img/map_logo.png',
+							// Размеры метки.
+							iconImageSize: [38, 44],
+							// Смещение левого верхнего угла иконки относительно
+							// её «ножки» (точки привязки).
+							iconImageOffset: [-19, -22]
+						});
+
+						myCollection.add(myPlacemark);
+					}
+
+					myMap.geoObjects.add(myCollection);
+					myMap.setBounds(myCollection.getBounds());
+
+
+				}
+				else {
+					alert('Произошла ошибка!');
+				}
+			})
+
+
+		}
+		function go_to(lon, lat, address) {
+			$('html, body').animate({ scrollTop: $('#map').offset().top }, 500);
+			myMap.setCenter([lat, lon], 16);
+			myCollection.each(function (item) {
+				if (item.properties.get('balloonContentHeader') == '<h2">' + address + '</h2><img style="float:right" src="https://market-da.ru/images/icon-80.png">') {
+					item.balloon.open();
+				}
+
+			});
+			return false;
+		}
+		function go_to1(lat, lon, address) {
+			$('html, body').animate({ scrollTop: $('#map').offset().top }, 500);
+			myMap.setCenter([lat, lon], 16);
+			myCollection.each(function (item) {
+				if (item.properties.get('balloonContentHeader') == '<h2">' + address + '</h2><img style="float:right" src="https://market-da.ru/images/icon-80.png">') {
+					item.balloon.open();
+				}
+
+			});
+			return false;
+		}
+		function showAddrescar(value) {
+
+
+
+			var myGeocoder = ymaps.geocode(value, { results: 1 });
+			myGeocoder.then(
+				function (res) {
+					var point = res.geoObjects.get(0).geometry.getCoordinates()
+					myPlacemark1 = new ymaps.Placemark(point, {
+
+						balloonContentHeader: '<h2">' + value + '</h2>'
+					}, {
+						// Необходимо указать данный тип макета.
+						iconLayout: 'default#image',
+						iconImageHref: 'https://market-da.ru/images/map_logo.jpg',
+						// Размеры метки.
+						iconImageSize: [38, 44],
+						// Смещение левого верхнего угла иконки относительно
+						// её «ножки» (точки привязки).
+						iconImageOffset: [-19, -22]
+					});
+
+					myMap.setCenter(point, 16);
+
+
+					myMap.geoObjects.add(myPlacemark1);
+
+					myPlacemark1.balloon.open();;
+
+
+
+				},
+				function (err) {
+					// обработка ошибки
+				}
+			);
+
+			return false;
+		}
+
+		function showRoute(position) {
+			var latitude = position.coords.latitude;
+			var longitude = position.coords.longitude;
+
+			var point = [latitude, longitude];
+			//console.log("Latitude : " + latitude + " Longitude: " + longitude);
+
+			var minDist = ymaps.coordSystem.geo.getDistance(point, myCollection.get(0).geometry.getCoordinates());
+			//console.log ("md",minDist);
+
+			var closestPointIdx = 0;
+			for (var i = 1, l = myCollection.getLength(); i < l; ++i) {
+				var dist = ymaps.coordSystem.geo.getDistance(point, myCollection.get(i).geometry.getCoordinates());
+				if (minDist > dist) {
+					minDist = dist;
+					closestPointIdx = i;
+					//console.log (minDist, dist);		
+				}
+
+			}
+
+
+
+
+			$('.route-form-view__travel-mode-car').addClass('active');
+			$('.route-form-view__travel-mode-bus').removeClass('active');
+
+
+			var value = "Вы здесь";
+			ymaps.route([
+
+				{ type: 'wayPoint', point: point },
+
+				{ type: 'wayPoint', point: myCollection.get(closestPointIdx).geometry.getCoordinates() }
+			], {
+				mapStateAutoApply: true,
+
+			}).then(function (route) {
+
+				$('.sidebarmapgeo').show();
+				$('.sidebarmap').hide();
+				$('.route-view_driving').html('<div class="route-view_driving__route-title"><div class="route-view_driving__route-title-text">' + Math.ceil(route.getJamsTime() / 60) + ' мин, ' + route.getHumanLength() + '</div></div><div class="route-view_driving__route-subtitle">' + Math.ceil(route.getTime() / 60) + ' мин без пробок на дороге</div>');
+
+				var points = route.getWayPoints();
+				var moveList = '<div class="route-step-view _waypoint _waypoint-index_0 _init" data-block="route-step-view"><div class="route-step-view__item _clickable"><div class="route-step-view__hover-tail"></div>	<div class="route-step-view__icon"></div>												<div class="route-step-view__title">' + value + '</div>	</div></div>',
+					way,
+					segments;
+				// Получаем массив путей.
+				for (var i = 0; i < route.getPaths().getLength(); i++) {
+					way = route.getPaths().get(i);
+					segments = way.getSegments();
+					for (var j = 0; j < segments.length; j++) {
+						var street = segments[j].getStreet();
+
+						dddist = parseInt(segments[j].getLength());
+						if (dddist > 1000) dddist_str = parseInt(dddist / 1000) + " км";
+						else dddist_str = dddist + " м";
+
+						moveList += '<div class="route-step-view _tactical-direction _init" data-block="route-step-view"><div class="route-step-view__item _clickable"><div class="route-step-view__hover-tail"></div>';
+						moveList += ' <div class="route-step-view__icon ' + segments[j].getAction() + '"></div>'
+						moveList += '<div class="route-step-view__title">' + segments[j].getHumanAction() + '</div><div class="route-step-view__description"><div class="route-step-view__description-content">' + dddist_str + ', ' + street + '</div></div></div></div>'
+					}
+				}
+				moveList += '<div class="route-step-view _waypoint _waypoint-index_1 _init" data-block="route-step-view"><div class="route-step-view__item _clickable"><div class="route-step-view__hover-tail"></div>	<div class="route-step-view__icon"></div>												<div class="route-step-view__title">' + myCollection.get(closestPointIdx).properties.get('balloonContentHeader') + '</div>	</div></div>';
+				$('.route-detailed-view').html(moveList);
+				var points = route.getWayPoints();
+
+
+				points.get(1).options.set('preset', {
+					iconImageHref: 'http://market-da.ru/images/map_logo.jpg', // картинка иконки
+					iconImageSize: [38, 34], // размеры картинки
+					iconImageOffset: [-19, -22]
+				});
+				points.get(0).properties.set('balloonContentHeader', 'Точка отправления');
+				points.get(1).properties.set('balloonContentHeader', myCollection.get(closestPointIdx).properties.get('balloonContentHeader'));
+				points.get(1).properties.set('balloonContentBody', myCollection.get(closestPointIdx).properties.get('balloonContentBody'));
+
+				// добавляем маршрут на карту
+				myMap.geoObjects.remove(routess);
+				routess = route;
+				myMap.geoObjects.add(route);
+			});
+
+
+		}
+
+
+
+		function showRouteBus(position) {
+			var latitude = position.coords.latitude;
+			var longitude = position.coords.longitude;
+
+			var point = [latitude, longitude];
+			//console.log("Latitude : " + latitude + " Longitude: " + longitude);
+
+			var minDist = ymaps.coordSystem.geo.getDistance(point, myCollection.get(0).geometry.getCoordinates());
+			//console.log ("md",minDist);
+
+			var closestPointIdx = 0;
+			for (var i = 1, l = myCollection.getLength(); i < l; ++i) {
+				var dist = ymaps.coordSystem.geo.getDistance(point, myCollection.get(i).geometry.getCoordinates());
+				if (minDist > dist) {
+					minDist = dist;
+					closestPointIdx = i;
+					//console.log (minDist, dist);		
+				}
+
+			}
+
+
+			var value = "Вы здесь";
+			$('.route-form-view__travel-mode-bus').addClass('active');
+			$('.route-form-view__travel-mode-car').removeClass('active');
+			var multiRouteModel = new ymaps.multiRouter.MultiRouteModel([point, myCollection.get(closestPointIdx).geometry.getCoordinates()], {
+				routingMode: 'masstransit',
+				boundsAutoApply: true
+
+			});
+
+			var multiRouteView = new ymaps.multiRouter.MultiRoute(multiRouteModel, {
+				boundsAutoApply: true
+			});
+			myMap.geoObjects.remove(routess);
+			routess = multiRouteView;
+			myMap.geoObjects.add(multiRouteView);
+			multiRouteView.model.events
+				.add("requestsuccess", function (event) {
+					var routes = event.get("target").getRoutes();
+
+					$('.sidebarmapgeo').show();
+					$('.sidebarmap').hide();
+					$('.route-view_driving').html('<div class="route-view_driving__route-title"><div class="route-view_driving__route-title-text">Найдено маршрутов: ' + routes.length + '</div></div><div class="route-view_driving__route-subtitle"></div>');
+
+					var moveList = '<div class="route-list-view _init _live-events _travel-mode_masstransit" data-block="route-list-view"><div class="route-list-view__list">';
+
+					for (var i = 0, l = routes.length; i < l; i++) {
+						//  console.log(routes[i].getHumanTime());
+						moveList += ' <div class="route-view_masstransit _init _active" data-block="route-view">' +
+							'<div class="route-view_masstransit__route-title">' +
+							' <div class="route-view_masstransit__route-title-text">Протяженность: ' + routes[i].properties.get("distance").text + '</div>' +
+							' <div class="route-view_masstransit__route-title-text">Время: ' + routes[i].properties.get("duration").text + '</div>' +
+							' </div>';
+						for (var j = 0, d = routes[i].getPaths().length; j < d; j++) {
+							var path = routes[i].getPaths()[j];
+							for (var k = 0, s = path.getSegments().length; k < s; k++) {
+								// var type = path.getSegments()[k].properties.get('type');
+								//moveList +=  path.getSegments()[k].properties.get("distance").text+'</br>';
+								//moveList +=  path.getSegments()[k].properties.get("distance").text+'</br>';
+
+								//moveList +=  path.getSegments()[k].properties.get("duration").text+'</br>';
+								moveList += '<div class="list">-' + path.getSegments()[k].properties.get("text") + '</br></div>';
+								//	moveList +=  path.getSegments()[k].properties.get("transports")+'</br>';
+								//var  ITransportProperties=path.getSegments()[k].properties.get("transports");
+								//console.log(path.getSegments()[k].properties.get("transports"));
+							}
+						}
+						moveList += '</div>';
+					}
+					moveList += '</div></div>';
+
+					$('.route-detailed-view').html(moveList);
+
+				})
+				.add("requestfail", function (event) {
+					console.log("Ошибка: " + event.get("error").message);
+				});
+
+
+		}
+
+		function errorHandler(err) {
+			if (err.code == 1) {
+				$("#shopNearBlk").text("Доступ запрещен пользователем!");
+			} else if (err.code == 2) {
+				$("#shopNearBlk").text("Геопозиция недоступна!");
+			}
+		}
+		function showRoute2ShopNearUser() {
+
+			if (navigator.geolocation) {
+
+				// timeout at 60000 milliseconds (60 seconds)
+				var options = { timeout: 60000 };
+				navigator.geolocation.getCurrentPosition(showRoute, errorHandler, options);
+			} else {
+				$("#shopNearBlk").text("Геопозиция недоступна!");
+			}
+
+		}
+
+
+		function showRoute2ShopNearUserBus() {
+
+			if (navigator.geolocation) {
+
+				// timeout at 60000 milliseconds (60 seconds)
+				var options = { timeout: 60000 };
+				navigator.geolocation.getCurrentPosition(showRouteBus, errorHandler, options);
+			} else {
+				$("#shopNearBlk").text("Геопозиция недоступна!");
+			}
+
+		}
+
+
+
+
+		function showAddress(value) {
+
+			myCollection.each(function (item) {
+
+				item.balloon.close();
+
+			});
+
+			var myGeocoder = ymaps.geocode(value, { results: 1 });
+			myGeocoder.then(
+				function (res) {
+					var point = res.geoObjects.get(0).geometry.getCoordinates()
+
+					console.log('point:', point);
+					var minDist = ymaps.coordSystem.geo.getDistance(point, myCollection.get(0).geometry.getCoordinates())
+					console.log('mindist:', minDist);
+					var closestPointIdx = 0;
+					for (var i = 1, l = myCollection.getLength(); i < l; ++i) {
+						var dist = ymaps.coordSystem.geo.getDistance(point, myCollection.get(i).geometry.getCoordinates());
+						if (minDist > dist) {
+							minDist = dist;
+							closestPointIdx = i;
+
+						}
+
+
+					}
+
+
+
+					$('.route-form-view__travel-mode-car').addClass('active');
+					$('.route-form-view__travel-mode-bus').removeClass('active');
+
+					ymaps.route([
+
+						{ type: 'wayPoint', point: value },
+
+						{ type: 'wayPoint', point: myCollection.get(closestPointIdx).geometry.getCoordinates() }
+					], {
+						mapStateAutoApply: true,
+
+					}).then(function (route) {
+						$('.sidebarmapgeo').hide();
+						$('.sidebarmap').show();
+						$('.route-view_driving').html('<div class="route-view_driving__route-title"><div class="route-view_driving__route-title-text">' + Math.ceil(route.getJamsTime() / 60) + ' мин, ' + route.getHumanLength() + '</div></div><div class="route-view_driving__route-subtitle">' + Math.ceil(route.getTime() / 60) + ' мин без пробок на дороге</div>');
+
+						var points = route.getWayPoints();
+						var moveList = '<div class="route-step-view _waypoint _waypoint-index_0 _init" data-block="route-step-view"><div class="route-step-view__item _clickable"><div class="route-step-view__hover-tail"></div>	<div class="route-step-view__icon"></div>												<div class="route-step-view__title">' + value + '</div>	</div></div>',
+							way,
+							segments;
+						// Получаем массив путей.
+						for (var i = 0; i < route.getPaths().getLength(); i++) {
+							way = route.getPaths().get(i);
+							segments = way.getSegments();
+							for (var j = 0; j < segments.length; j++) {
+								var street = segments[j].getStreet();
+								moveList += '<div class="route-step-view _tactical-direction _init" data-block="route-step-view"><div class="route-step-view__item _clickable"><div class="route-step-view__hover-tail"></div>';
+								moveList += ' <div class="route-step-view__icon ' + segments[j].getAction() + '"></div>'
+								moveList += '<div class="route-step-view__title">' + segments[j].getHumanAction() + '</div><div class="route-step-view__description"><div class="route-step-view__description-content">' + segments[j].getLength() + '&nbsp;м, ' + street + '</div></div></div></div>'
+							}
+						}
+						moveList += '<div class="route-step-view _waypoint _waypoint-index_1 _init" data-block="route-step-view"><div class="route-step-view__item _clickable"><div class="route-step-view__hover-tail"></div>	<div class="route-step-view__icon"></div>												<div class="route-step-view__title">' + myCollection.get(closestPointIdx).properties.get('balloonContentHeader') + '</div>	</div></div>';
+						$('.route-detailed-view').html(moveList);
+						var points = route.getWayPoints();
+
+
+						points.get(1).options.set('preset', {
+							iconImageHref: 'http://market-da.ru/images/logo.jpg', // картинка иконки
+							iconImageSize: [38, 38], // размеры картинки
+							iconImageOffset: [-19, -19]
+						});
+						points.get(0).properties.set('balloonContentHeader', 'Точка отправления');
+						points.get(1).properties.set('balloonContentHeader', myCollection.get(closestPointIdx).properties.get('balloonContentHeader'));
+						points.get(1).properties.set('balloonContentBody', myCollection.get(closestPointIdx).properties.get('balloonContentBody'));
+
+						// добавляем маршрут на карту
+						myMap.geoObjects.remove(routess);
+						routess = route;
+						myMap.geoObjects.add(route);
+					});
+				},
+				function (err) {
+					// обработка ошибки
+				}
+			);
+
+			return false;
+		}
+		function showAddressbuss(value) {
+
+			myCollection.each(function (item) {
+
+				item.balloon.close();
+
+			});
+
+			var myGeocoder = ymaps.geocode(value, { results: 1 });
+			myGeocoder.then(
+				function (res) {
+					var point = res.geoObjects.get(0).geometry.getCoordinates()
+
+
+					var minDist = ymaps.coordSystem.geo.getDistance(point, myCollection.get(0).geometry.getCoordinates())
+					var closestPointIdx = 0;
+					for (var i = 1, l = myCollection.getLength(); i < l; ++i) {
+						var dist = ymaps.coordSystem.geo.getDistance(point, myCollection.get(i).geometry.getCoordinates());
+						if (minDist > dist) {
+							minDist = dist;
+							closestPointIdx = i;
+
+						}
+
+
+					}
+
+
+
+					$('.route-form-view__travel-mode-bus').addClass('active');
+					$('.route-form-view__travel-mode-car').removeClass('active');
+					var multiRouteModel = new ymaps.multiRouter.MultiRouteModel([value, myCollection.get(closestPointIdx).geometry.getCoordinates()], {
+						routingMode: 'masstransit',
+						boundsAutoApply: true
+
+					});
+
+					var multiRouteView = new ymaps.multiRouter.MultiRoute(multiRouteModel, {
+						boundsAutoApply: true
+					});
+					myMap.geoObjects.remove(routess);
+					routess = multiRouteView;
+					myMap.geoObjects.add(multiRouteView);
+					multiRouteView.model.events
+						.add("requestsuccess", function (event) {
+							var routes = event.get("target").getRoutes();
+
+							$('.sidebarmapgeo').hide();
+							$('.sidebarmap').show();
+
+							$('.route-view_driving').html('<div class="route-view_driving__route-title"><div class="route-view_driving__route-title-text">Найдено маршрутов: ' + routes.length + '</div></div><div class="route-view_driving__route-subtitle"></div>');
+
+							var moveList = '<div class="route-list-view _init _live-events _travel-mode_masstransit" data-block="route-list-view"><div class="route-list-view__list">';
+
+							for (var i = 0, l = routes.length; i < l; i++) {
+								//  console.log(routes[i].getHumanTime());
+								moveList += ' <div class="route-view_masstransit _init _active" data-block="route-view">' +
+									'<div class="route-view_masstransit__route-title">' +
+									' <div class="route-view_masstransit__route-title-text">Протяженность: ' + routes[i].properties.get("distance").text + '</div>' +
+									' <div class="route-view_masstransit__route-title-text">Время: ' + routes[i].properties.get("duration").text + '</div>' +
+									' </div>';
+								for (var j = 0, d = routes[i].getPaths().length; j < d; j++) {
+									var path = routes[i].getPaths()[j];
+									for (var k = 0, s = path.getSegments().length; k < s; k++) {
+										// var type = path.getSegments()[k].properties.get('type');
+										//moveList +=  path.getSegments()[k].properties.get("distance").text+'</br>';
+										//moveList +=  path.getSegments()[k].properties.get("distance").text+'</br>';
+
+										//moveList +=  path.getSegments()[k].properties.get("duration").text+'</br>';
+										moveList += '<div class="list">-' + path.getSegments()[k].properties.get("text") + '</br></div>';
+										//	moveList +=  path.getSegments()[k].properties.get("transports")+'</br>';
+										//var  ITransportProperties=path.getSegments()[k].properties.get("transports");
+										//console.log(path.getSegments()[k].properties.get("transports"));
+									}
+								}
+								moveList += '</div>';
+							}
+							moveList += '</div></div>';
+
+							$('.route-detailed-view').html(moveList);
+
+						})
+						.add("requestfail", function (event) {
+							console.log("Ошибка: " + event.get("error").message);
+						});
+
+				},
+				function (err) {
+					// обработка ошибки
+				}
+			);
+
+			return false;
+		}
+	</script>
+
+	<style>
+		.typpea {
+			padding: 3px;
+		}
+
+		.nazvadr {
+			color: #B6B6B6;
+			line-height: 20px;
+		}
+
+		.vrrab {
+			float: right;
+			color: #003C71;
+			margin-left: 5px;
+		}
+
+		#map {
+			float: left;
+			margin: 25px 20px 40px 0;
+			height: 514px;
+		}
+	</style>
+	
+</head>
+
+<body>
+
+	<div class="w1">
+		<div class="w2">
+			<div id="wrapper">
+				<div id="mobmenu"><a href="/"><img src="/images/logo4.png" alt="" /></a>
+					<div id="imenu"><span>меню</span></div><a id="imap" href="shops.html"></a><a href="/en/"
+						id="mmlng">ENG</a>
+				</div>
+				<header id="header" class="clearfix">
+					<div id="mcl"><a href="/"><img src="/images/logo4.png" alt="" /></a>
+						<div class="ptx">Продуктовый<br>дискаунтер</div>
+						<div id="mcclose"></div>
+					</div>
+					<strong class="logo" style="overflow:visible;"><a href="#" itemprop="name">Магазин "Да!"</a>
+						<div id="new_year_logo"></div>
+					</strong>
+
+
+					<nav id="nav"><!--template NOT IN(33,45,53,58,61)  template NOT IN(45,53)-->
+						<ul>
+							<li><a href="/about.html" title="О компании">О компании</a>
+								<ul>
+									<li><a href="/about/brands.html" title="Эксклюзивные бренды">Эксклюзивные бренды</a>
+									</li>
+									<li><a href="/about/kontakty.html" title="Контакты">Контакты</a></li>
+									<li><a href="/about/gift.html" title="Подарочные карты">Подарочные карты</a></li>
+									<li><a href="shops.html" title="Адреса магазинов">Адреса магазинов</a></li>
+									<li><a href="/about/interaktivnyj-portal.html"
+											title="Интерактивный портал">Интерактивный портал</a></li>
+									<li class="last"><a href="/about/policy.html"
+											title="Политика конфиденциальности">Политика конфиденциальности</a></li>
+								</ul>
+							</li>
+							<li><a href="/sale.html" title="Еженедельные акции">Еженедельные акции</a></li>
+							<li class="active"><a href="/career.html" title="Карьера">Карьера</a></li>
+							<li><a href="/partners.html" title="Партнерам">Партнерам</a>
+								<ul>
+									<li><a href="/partners/postavshhikam.html" title="Поставщикам">Поставщикам</a></li>
+									<li><a href="/partners/arendatoram.html" title="Арендаторам">Арендаторам</a></li>
+									<li class="last"><a href="/partners/arendatoram-i-sobstvennikam.html"
+											title="Арендодателям и собственникам">Арендодателям и собственникам</a></li>
+								</ul>
+							</li>
+							<li class="last"><a href="/shops.html" title="Магазины">Магазины</a></li>
+						</ul>
+					</nav>
+					<a class="language" href="/en"><img src="images/icon-01.png" alt="image description" />English</a>
+				</header>
+				<div id="main" class="vvmap">
+					<div class="boxes-wrap">
+						
+
+						<section class="boxes-specialist">
+							<div class="boxes-specialist__top">
+								<div class="boxes-specialist__content">
+									<h1 class="boxes-specialist__title">Специалист магазина</h1>
+									<div class="boxes-specialist__sub-title boxes-title">Ты в 1 шаге от новой работы!
+									</div>
+								</div>
+								<div class="boxes-specialist__block">
+									<div class="boxes-specialist__label">Записаться на собеседование:</div>
+									<a href="tel:88005002755" class="boxes-specialist__tel">
+										<svg width="40" height="40" viewBox="0 0 40 40" fill="none"
+											xmlns="http://www.w3.org/2000/svg">
+											<g clip-path="url(#clip0_6_349)">
+												<path
+													d="M24.7656 40.0001C24.2687 39.9087 23.7672 39.8353 23.2758 39.7228C21.8234 39.3907 20.55 38.6431 19.2727 37.9243C11.1367 33.3485 5.10313 26.7853 0.9375 18.4657C0.474219 17.5399 0.184375 16.5595 0.0679687 15.529C0.059375 15.4548 0.0234375 15.3845 0 15.3126C0 14.7399 0 14.1665 0 13.5939C0.0867188 13.1493 0.154687 12.7009 0.263281 12.2618C0.6625 10.6501 1.43203 9.23526 2.58203 8.03526C3.13984 7.45245 3.71172 6.88214 4.29062 6.32042C5.25234 5.38682 6.58125 5.38604 7.53516 6.3337C9.59453 8.37979 11.6484 10.4314 13.693 12.4923C14.6391 13.4454 14.632 14.7751 13.6914 15.7368C12.8906 16.5556 12.0727 17.3579 11.2633 18.1689C10.4758 18.9579 10.4 19.6126 11.0102 20.5282C11.3711 21.0696 11.7547 21.5946 12.1289 22.1267C12.4539 22.5884 12.4141 23.0532 12.0242 23.329C11.6578 23.5884 11.1883 23.486 10.8758 23.0525C10.4344 22.4407 9.99375 21.8274 9.58203 21.1954C8.74453 19.911 8.89844 18.3571 9.97031 17.2587C10.7977 16.411 11.6445 15.5821 12.4805 14.7431C12.9539 14.2681 12.9547 13.9587 12.4789 13.4821C10.5016 11.5017 8.52266 9.52198 6.54219 7.54386C6.06406 7.06651 5.75 7.06026 5.28594 7.53761C4.56094 8.2837 3.75625 8.97432 3.14687 9.80714C1.30703 12.3196 1.00937 15.0493 2.39141 17.8603C4.88203 22.9251 8.22344 27.3618 12.4289 31.1368C15.3711 33.7782 18.6195 35.9696 22.1844 37.6798C25.043 39.0517 28.4281 38.5118 30.7445 36.3446C31.343 35.7845 31.9156 35.1962 32.4906 34.611C32.8648 34.2298 32.8648 33.8704 32.4844 33.4884C30.4625 31.4603 28.4375 29.4345 26.4086 27.4134C26.0148 27.0212 25.6672 27.0353 25.2609 27.4384C24.4391 28.2548 23.6242 29.079 22.8016 29.8946C21.5914 31.0939 20.0609 31.2571 18.6531 30.3032C17.8031 29.7274 16.9805 29.1087 16.157 28.4946C15.6492 28.1165 15.5422 27.6517 15.8367 27.2657C16.1477 26.8579 16.593 26.8743 17.1359 27.2782C17.9289 27.8681 18.7258 28.4532 19.5375 29.0165C20.2828 29.5337 21.007 29.4649 21.657 28.8282C22.5031 27.9993 23.332 27.1524 24.1734 26.3181C25.1922 25.3071 26.5078 25.3064 27.5289 26.3235C29.5484 28.336 31.5648 30.3517 33.5773 32.3712C34.5914 33.3892 34.5914 34.7087 33.582 35.7321C33.0063 36.3165 32.4367 36.9079 31.8359 37.4649C30.3102 38.8814 28.5109 39.7142 26.4344 39.9337C26.3453 39.9431 26.2594 39.9767 26.1719 39.9985H24.7656V40.0001Z"
+													fill="#65B947" stroke="#65B947" stroke-width="0.5" />
+												<path
+													d="M23.9062 0C24.5976 0.101563 25.293 0.185156 25.9805 0.307813C32.5328 1.47578 38.0875 6.77969 39.5234 13.2586C39.7117 14.1063 39.7976 14.9766 39.9336 15.8359C39.9476 15.9234 39.9773 16.0078 40 16.0938V17.5C39.9672 17.5359 39.9273 17.5672 39.9015 17.607C39.6851 17.943 39.3789 18.0781 38.9969 17.9672C38.6101 17.8547 38.4742 17.5602 38.4312 17.1711C38.2953 15.9469 38.2758 14.6867 37.9578 13.5094C36.3039 7.39531 32.364 3.53359 26.2265 1.97031C25.2039 1.70938 24.1211 1.67344 23.0617 1.57656C22.625 1.53672 22.2187 1.51719 22.0383 1.04063C21.8984 0.670313 22.0414 0.366406 22.4992 0C22.9687 0 23.4375 0 23.9062 0Z"
+													fill="#65B947" stroke="#65B947" stroke-width="0.5" />
+												<path
+													d="M23.1156 4.71022C29.1875 4.84772 34.368 9.48522 35.168 15.4969C35.2383 16.0243 35.2766 16.5579 35.2977 17.0899C35.3195 17.6469 34.9906 18.0094 34.5141 18.0055C34.0524 18.0016 33.7649 17.6641 33.7406 17.1165C33.5492 12.7266 31.5242 9.47975 27.6445 7.41491C26.2336 6.66413 24.7008 6.32741 23.107 6.26335C22.9774 6.25788 22.8461 6.26335 22.7172 6.25085C22.307 6.21256 22.0125 5.90944 21.9953 5.51413C21.9781 5.1196 22.2453 4.78053 22.6492 4.71413C22.8008 4.68913 22.9602 4.71022 23.1164 4.71022H23.1156Z"
+													fill="#65B947" stroke="#65B947" stroke-width="0.5" />
+												<path
+													d="M22.9047 9.39771C27.1711 9.56411 30.4391 12.8282 30.586 16.9899C30.5953 17.2602 30.4969 17.6157 30.3133 17.7891C30.1485 17.9454 29.7836 17.9829 29.5336 17.9344C29.225 17.875 29.0922 17.5868 29.0414 17.2579C28.9274 16.5165 28.8938 15.7352 28.6227 15.0516C27.618 12.5118 25.6985 11.161 22.9727 10.9625C22.8688 10.9547 22.7641 10.9579 22.661 10.9438C22.2906 10.8922 22.0242 10.6063 21.9977 10.2375C21.9703 9.86567 22.1875 9.5438 22.5516 9.44458C22.6992 9.40474 22.8578 9.40317 22.9047 9.39771Z"
+													fill="#65B947" stroke="#65B947" stroke-width="0.5" />
+												<path
+													d="M25.8914 17.1468C25.8984 17.6327 25.6125 17.9725 25.1719 18.003C24.732 18.0335 24.4148 17.7475 24.3437 17.2554C24.1914 16.2069 23.7922 15.8054 22.7578 15.6577C22.2445 15.585 21.9539 15.2561 22.0008 14.8022C22.0461 14.3624 22.382 14.0975 22.8789 14.1108C24.518 14.1538 25.8687 15.5155 25.8914 17.1468Z"
+													fill="#65B947" stroke="#65B947" stroke-width="0.5" />
+												<path
+													d="M13.8445 24.596C14.2812 24.5882 14.6187 24.9069 14.6305 25.339C14.643 25.7835 14.2937 26.1483 13.8586 26.146C13.4398 26.1437 13.0914 25.7944 13.0859 25.3726C13.0812 24.9468 13.4156 24.603 13.8437 24.5952L13.8445 24.596Z"
+													fill="#65B947" stroke="#65B947" stroke-width="0.5" />
+											</g>
+											<defs>
+												<clipPath id="clip0_6_349">
+													<rect width="40" height="40" fill="white" />
+												</clipPath>
+											</defs>
+										</svg>
+										<span>8-800-500-27-55</span>
+									</a>
+								</div>
+							</div>
+							<div class="boxes-specialist__image">
+								<img src="img/boxes-specialist.jpg" alt="магазин Да">
+							</div>
+							<div class="boxes-specialist__links">
+								<a href="#" class="boxes-specialist__link">ЗАПОЛНИТЬ АНКЕТУ</a>
+								<a href="#" class="boxes-specialist__link">НАПИСАТЬ В ЧАТ</a>
+							</div>
+						</section>
+
+						<div class="boxes-map">
+							<h2 class="boxes-map__title">Выбери бижайший магазин на карте,
+								<span>и узнай, какие вакансии в нём открыты</span></h2>
+
+							<div class="container boxes-container">
+								<div id="map" class="boxes-m">
+									<div class="sidebarmapgeo" style="display:none;">
+										<div class="sidebar-panel-view__content">
+											<div class="route-panel-header-view ">
+												<div class="route-panel-header-view__title ">Маршрут</div>
+
+											</div>
+											<div class="route-panel-content-view">
+												<div class="route-panel-content-view__top-content">
+													<div class="route-form-view__travel-modes"><span
+															class="y-radio-group_travel-mode _init _checked"
+															data-block="y-radio-group"><input
+																class="y-radio-group_travel-mode__input" type="radio"
+																id="uniqc0" name="travel-mode" value="auto">
+															<label class="y-radio-group_travel-mode__label"
+																for="uniqc0">
+																<div class="route-form-view__travel-mode-car"
+																	onclick="showRoute2ShopNearUser();return false;">
+																</div>
+															</label>
+															<input class="y-radio-group_travel-mode__input" type="radio"
+																id="uniqc1" name="travel-mode" value="masstransit">
+															<label class="y-radio-group_travel-mode__label"
+																for="uniqc1">
+																<div class="route-form-view__travel-mode-bus"
+																	onclick="showRoute2ShopNearUserBus();return false;">
+																</div>
+															</label></span></div>
+													<div class="route-list-view _init _live-events _travel-mode_auto _detailed"
+														data-block="route-list-view">
+														<div class="route-list-view__list">
+															<div class="route-view_driving _init _active _detailed"
+																data-block="route-view">
+
+															</div>
+														</div>
+													</div>
+												</div>
+												<div class="route-detailed-view _init _live-events _type_driving"
+													data-block="route-detailed-view">
+													<div class="route-detailed-view__steps-layout">
+
+													</div>
+												</div>
+											</div>
+										</div>
+										<div class="sidebar-panel-view__collapse" title=""></div>
+										<div class="sidebar-panel-view__expand" title=""></div>
+									</div>
+									<div class="sidebarmap">
+										<div class="sidebar-panel-view__content">
+											<div class="route-panel-header-view ">
+												<div class="route-panel-header-view__title ">Маршрут</div>
+
+											</div>
+											<div class="route-panel-content-view">
+												<div class="route-panel-content-view__top-content">
+													<div class="route-form-view__travel-modes"><span
+															class="y-radio-group_travel-mode _init _checked"
+															data-block="y-radio-group"><input
+																class="y-radio-group_travel-mode__input" type="radio"
+																id="uniqc0" name="travel-mode" value="auto">
+															<label class="y-radio-group_travel-mode__label"
+																for="uniqc0">
+																<div class="route-form-view__travel-mode-car"
+																	onclick="showAddress(address.value);return false;">
+																</div>
+															</label>
+															<input class="y-radio-group_travel-mode__input" type="radio"
+																id="uniqc1" name="travel-mode" value="masstransit">
+															<label class="y-radio-group_travel-mode__label"
+																for="uniqc1">
+																<div class="route-form-view__travel-mode-bus"
+																	onclick="showAddressbuss(address.value);return false;">
+																</div>
+															</label></span></div>
+													<div class="route-list-view _init _live-events _travel-mode_auto _detailed"
+														data-block="route-list-view">
+														<div class="route-list-view__list">
+															<div class="route-view_driving _init _active _detailed"
+																data-block="route-view">
+
+															</div>
+														</div>
+													</div>
+												</div>
+												<div class="route-detailed-view _init _live-events _type_driving"
+													data-block="route-detailed-view">
+													<div class="route-detailed-view__steps-layout">
+
+													</div>
+												</div>
+											</div>
+										</div>
+										<div class="sidebar-panel-view__collapse" title=""></div>
+										<div class="sidebar-panel-view__expand" title=""></div>
+									</div>
+
+								</div>
+								<div class="box-address boxes-address">
+									<form action="#" id="adddddddd"
+										onsubmit="showAddress(this.address.value);return false;">
+										<fieldset>
+											<div class="search">
+												<input id="address" type="text"
+													placeholder="Найдите ваш магазин (по городу / улице)">
+												<input type="submit" value="">
+											</div>
+										</fieldset>
+									</form>
+									<div id="shopNearBlk" class="check-box-geolocation"><a
+											onClick="javascript:showRoute2ShopNearUser();return false;"><svg
+												class="icon icon--store">
+												<use xlink:href="/img/sprite.symbol.svg#store"></use>
+											</svg>Использовать текущее местоположение</a></div>
+									<div class="city box-more">
+										<h3><a class="close" href="#">Москва<em></em></a></h3>
+										<ul style="display:none">
+											<li onClick="return go_to(37.637272, 55.869688, 'пр. Дежнева, 23');">
+												Бабушкинская,
+												пр. Дежнева, 23<span></span></li>
+
+											<li
+												onClick="return go_to(37.643410084655244, 55.87086399967242, 'пр. Дежнева, 7');">
+												Бабушкинская, пр. Дежнева, 7<span></span></li>
+
+											<li
+												onClick="return go_to(37.489392, 55.82801, 'Ленинградское шоссе, 25 ');">
+												Балтийская, Ленинградское шоссе, 25 <span></span></li>
+
+											<li
+												onClick="return go_to(37.59277, 55.88001, 'ул. Бибиревская, 7 к. 2 (c 8.00 до 22.30)');">
+												Бибирево, ул. Бибиревская, 7 к. 2 (c 8.00 до 22.30)<span></span></li>
+
+											<li onClick="return go_to(37.751574, 55.657956, 'Мячковский бульвар, 3а');">
+												Братиславская, Мячковский бульвар, 3а<span></span></li>
+
+											<li
+												onClick="return go_to(37.560448, 55.565666, 'ул. Академика Глушко, 15');">
+												Бульвар Дмитрия Донского, ул. Академика Глушко, 15<span></span></li>
+
+											<li onClick="return go_to(37.565389, 55.574055, 'ул. Куликовская, 6');">
+												Бульвар
+												Дмитрия Донского, ул. Куликовская, 6<span></span></li>
+
+											<li
+												onClick="return go_to(37.618354, 55.818877, 'ул. Академика Королева, 13, стр. 1 (c 7.30 до 22.00)');">
+												ВДНХ, ул. Академика Королева, 13, стр. 1 (c 7.30 до 22.00)<span></span>
+											</li>
+
+											<li onClick="return go_to(37.665462, 55.676311, 'пр-т Андропова, 27');">
+												Коломенская,
+												пр-т Андропова, 27<span></span></li>
+
+											<li onClick="return go_to(37.765103, 55.704108, 'ул. Маршала Чуйкова, 3');">
+												Кузьминки, ул. Маршала Чуйкова, 3<span></span></li>
+
+											<li onClick="return go_to(37.909794, 55.723541, 'ул. Лухмановская, 36');">
+												Лухмановская, ул. Лухмановская, 36<span></span></li>
+
+											<li onClick="return go_to(37.750622, 55.675484, 'ул. Краснодонская, 35');">
+												Люблино,
+												ул. Краснодонская, 35<span></span></li>
+
+											<li onClick="return go_to(37.739052, 55.654635, 'ул. Люблинская, 100');">
+												Марьино,
+												ул. Люблинская, 100<span></span></li>
+
+											<li onClick="return go_to(37.359477, 55.845178, 'ул. Дубравная, 33');">
+												Митино,
+												ул.
+												Дубравная, 33<span></span></li>
+
+											<li onClick="return go_to(37.354061, 55.848958, 'ул. Митинская, 39');">
+												Митино,
+												ул.
+												Митинская, 39<span></span></li>
+
+											<li
+												onClick="return go_to(37.41245316001848, 55.72982163108042, 'ул. Кунцевская, 13А');">
+												Молодёжная, ул. Кунцевская, 13А<span></span></li>
+
+											<li
+												onClick="return go_to(37.6153, 55.673443, 'Электролитный проезд, 5Б, с. 6 (с 7.30 до 21.30)');">
+												Нагорная, Электролитный проезд, 5Б, с. 6 (с 7.30 до
+												21.30)<span></span><span class="slcsp">*</span></li>
+
+											<li
+												onClick="return go_to(37.354303, 55.636809, 'ул. Шолохова 5, корп. 2');">
+												Новопеределкино, ул. Шолохова 5, корп. 2<span></span></li>
+
+											<li onClick="return go_to(37.670923, 55.630893, 'Кавказский б-р, 17');">
+												Орехово,
+												Кавказский б-р, 17<span></span></li>
+
+											<li
+												onClick="return go_to(37.585404, 55.862979, 'Алтуфьевское шоссе, 24к1');">
+												Отрадное, Алтуфьевское шоссе, 24к1<span></span></li>
+
+											<li
+												onClick="return go_to(37.587667, 55.870066, 'Алтуфьевское шоссе, 38, стр. 1');">
+												Отрадное, Алтуфьевское шоссе, 38, стр. 1<span></span></li>
+
+											<li onClick="return go_to(37.78456, 55.740147, ' ул. Кусковская, 20 А');">
+												Перово,
+												ул. Кусковская, 20 А<span></span></li>
+
+											<li
+												onClick="return go_to(37.422279, 55.876476, '73-й километр МКАД, д.7');">
+												Планерная, 73-й километр МКАД, д.7<span></span></li>
+
+											<li
+												onClick="return go_to(37.60667325396513, 55.61111328956951, 'ул. Красного маяка, 2Б (c 8.30 до 22.30)');">
+												Пражская, ул. Красного маяка, 2Б (c 8.30 до 22.30)<span></span></li>
+
+											<li onClick="return go_to(37.504798, 55.676935, 'пр-т Вернадского, 14');">
+												Проспект
+												Вернадского, пр-т Вернадского, 14<span></span></li>
+
+											<li
+												onClick="return go_to(37.64171, 55.779196, 'Астраханский пер. 10 стр. 36  (пн-пт: 7.30 - 22.00, сб-вс: 8:30 - 22:00)');">
+												Проспект Мира, Астраханский пер. 10 стр. 36 (пн-пт: 7.30 - 22.00, сб-вс:
+												8:30 -
+												22:00)<span></span><span class="slcsp">*</span></li>
+
+											<li onClick="return go_to(37.685916, 55.741161, 'ул. Рабочая, 38');">
+												Римская,
+												ул.
+												Рабочая, 38<span></span></li>
+
+											<li
+												onClick="return go_to(37.508804, 55.625349, 'ул. Профсоюзная, д.142, к.1');">
+												Тёплый Стан, ул. Профсоюзная, д.142, к.1<span></span></li>
+
+											<li onClick="return go_to(37.648951, 55.579607, 'ул. Булатниковская, 9а');">
+												Улица
+												Академика Янгеля, ул. Булатниковская, 9а<span></span></li>
+
+											<li onClick="return go_to(37.621013, 55.597414, 'ул. Дорожная, вл.13');">
+												Улица
+												Академика Янгеля, ул. Дорожная, вл.13<span></span></li>
+
+											<li
+												onClick="return go_to(37.755886, 55.748194, 'ул. Перовская, 1, стр. 8');">
+												Шоссе
+												Энтузиастов, ул. Перовская, 1, стр. 8<span></span></li>
+
+											<li
+												onClick="return go_to(37.13284602117714, 55.57829614014487, 'д. Власово, пос. Марушкинское, квартал № 89, 1');">
+												г. Москва, д. Власово, пос. Марушкинское, квартал № 89,
+												1<span></span><span class="slcsp">*</span></li>
+
+											<li
+												onClick="return go_to(37.366942, 55.590796, 'Московский, ул. Солнечная, 3а, стр. 1');">
+												г. Москва, Московский, ул. Солнечная, 3а, стр. 1<span></span><span
+													class="slcsp">*</span></li>
+
+											<li
+												onClick="return go_to(37.17791, 55.317942, 'пос. Вороновское, п. ЛМС, мкрн. Центральный, 17Б');">
+												г. Москва, пос. Вороновское, п. ЛМС, мкрн. Центральный, 17Б<span></span>
+											</li>
+
+											<li
+												onClick="return go_to(37.406423, 55.421021, 'пос. Щаповское, п. Щапово, 69Ас1');">
+												г. Москва, пос. Щаповское, п. Щапово, 69Ас1<span></span></li>
+
+											<li
+												onClick="return go_to(37.56618000000002, 55.500106522271764, 'ул. Железнодорожная, д. 47');">
+												г. Щербинка, ул. Железнодорожная, д. 47<span></span></li>
+
+
+											<li class="alco"><span>*</span>Алкогольная продукция временно не
+												представлена
+											</li>
+										</ul>
+									</div>
+									<div class="area box-more">
+										<h3><a class="close" href="#">Московская область<em></em></a></h3>
+										<ul style="display:none">
+											<li
+												onClick="return go_to(37.99961850695067, 55.74640178988818, 'мкр. Железнодорожный, ул. Маяковского 12, стр.1');">
+												г. Балашиха, мкр. Железнодорожный, ул. Маяковского 12,
+												стр.1<span></span>
+											</li>
+
+											<li
+												onClick="return go_to(38.01039870632812, 55.742439743834794, 'ул. Автозаводская, 4Б');">
+												г. Балашиха, ул. Автозаводская, 4Б<span></span></li>
+
+											<li
+												onClick="return go_to(38.11986507276826, 55.75204262747271, 'мкр. Купавна, ул. Адмирала Нахимова, 8В');">
+												г. Балашиха, мкр. Купавна, ул. Адмирала Нахимова, 8В<span></span></li>
+
+											<li
+												onClick="return go_to(38.00736, 55.752045, 'мкрн. Железнодорожный, Привокзальная пл., 1 стр. 2');">
+												г. Балашиха, мкрн. Железнодорожный, Привокзальная пл., 1 стр.
+												2<span></span>
+											</li>
+
+											<li
+												onClick="return go_to(37.953003, 55.751847, 'мкрн. Кучино, ул. Центральная, 44');">
+												г. Балашиха, мкрн. Кучино, ул. Центральная, 44<span></span></li>
+
+											<li
+												onClick="return go_to(38.030546, 55.727922, 'мкрн. Саввино, ул. Саввинская, 10');">
+												г. Балашиха, мкрн. Саввино, ул. Саввинская, 10<span></span></li>
+
+											<li onClick="return go_to(37.939268, 55.793733, 'ш. Энтузиастов, 36а');">г.
+												Балашиха, ш. Энтузиастов, 36а<span></span></li>
+
+											<li onClick="return go_to(37.971059, 55.796871, 'ш. Энтузиастов, д.66А');">
+												г.
+												Балашиха, ш. Энтузиастов, д.66А<span></span></li>
+
+											<li
+												onClick="return go_to(38.121563, 55.78487, 'с. Бисерово, мкрн. Новое Бисерово-2, д. 24');">
+												г.ок. Богородский, с. Бисерово, мкрн. Новое Бисерово-2, д.
+												24<span></span>
+											</li>
+
+											<li onClick="return go_to(38.272309, 55.413883, 'ул. Льва Толстого, 9');">г.
+												Бронницы, ул. Льва Толстого, 9<span></span></li>
+
+											<li
+												onClick="return go_to(38.284239, 55.415947, ' ул. Советская, 155, стр. 1');">
+												г.
+												Бронницы, ул. Советская, 155, стр. 1<span></span></li>
+
+											<li
+												onClick="return go_to(37.685162, 55.56279, 'ул. Старо-Нагорная, 25/1');">
+												г.
+												Видное, ул. Старо-Нагорная, 25/1<span></span></li>
+
+											<li
+												onClick="return go_to(35.936941, 56.015988, 'ул. Шоссейная, 1 стр. 2');">
+												г.
+												Волоколамск, ул. Шоссейная, 1 стр. 2<span></span></li>
+
+											<li
+												onClick="return go_to(38.655441, 55.326932, 'ул. Горького, 33 стр. 1');">
+												г.
+												Воскресенск, ул. Горького, 33 стр. 1<span></span></li>
+
+											<li onClick="return go_to(38.651488, 55.311308, 'ул. Кагана, 19 ');">г.
+												Воскресенск,
+												ул. Кагана, 19 <span></span></li>
+
+											<li
+												onClick="return go_to(38.7061260820002, 55.327051402112055, 'ул. Лопатинская, 9, стр. 2/1');">
+												г. Воскресенск, ул. Лопатинская, 9, стр. 2/1<span></span></li>
+
+											<li
+												onClick="return go_to(38.696045, 55.309878, 'ул. Первостроителей, 7В');">
+												г.
+												Воскресенск, ул. Первостроителей, 7В<span></span></li>
+
+											<li
+												onClick="return go_to(38.443672, 55.455918, 'пос. Белоозерский, ул. Коммунальная, д.20А');">
+												Воскресенский р-н, пос. Белоозерский, ул. Коммунальная,
+												д.20А<span></span>
+											</li>
+
+											<li onClick="return go_to(37.126059, 55.86595, 'ул. Железнодорожная, 13');">
+												г.
+												Дедовск, ул. Железнодорожная, 13<span></span></li>
+
+											<li
+												onClick="return go_to(38.069993843902296, 55.65588761721308, 'ул. Железнодорожная, уч. 42 ');">
+												дер. Вялки, ул. Железнодорожная, уч. 42 <span></span></li>
+
+											<li
+												onClick="return go_to(37.84543933071857, 55.64000304231482, 'Котельники, Угрешский проезд, стр. 2');">
+												г. Дзержинский, Котельники, Угрешский проезд, стр. 2<span></span></li>
+
+											<li
+												onClick="return go_to(37.51045098413014, 56.33575546861579, 'Вокзальный пер., д. 5 (с 7:30 до 22:00)');">
+												г. Дмитров, Вокзальный пер., д. 5 (с 7:30 до 22:00)<span></span></li>
+
+											<li
+												onClick="return go_to(37.519844999999194, 56.3498643173364, 'ул. Профессиональная, 5B');">
+												г. Дмитров, ул. Профессиональная, 5B<span></span></li>
+
+											<li
+												onClick="return go_to(37.491233, 56.147771, 'п. Ермолино, ул. Центральная, 40');">
+												Дмитровский р-н, п. Ермолино, ул. Центральная, 40<span></span></li>
+
+											<li
+												onClick="return go_to(37.399228, 56.060162, 'село Озерецкое, вл1, с1 (с 7:30 до 22:00)');">
+												Дмитровский р-н, село Озерецкое, вл1, с1 (с 7:30 до 22:00)<span></span>
+											</li>
+
+											<li
+												onClick="return go_to(37.406019, 56.055799, 'совхоз Останкино, ул. Дорожная, 45а');">
+												Дмитровский р-н, совхоз Останкино, ул. Дорожная, 45а<span></span></li>
+
+											<li
+												onClick="return go_to(37.532268, 55.963823, 'Старое Дмитровское ш., 8., с. 1');">
+												г. Долгопрудный, Старое Дмитровское ш., 8., с. 1<span></span><span
+													class="slcsp">*</span></li>
+
+											<li
+												onClick="return go_to(37.6773032275381, 55.44171699156967, 'д. Заболотье, ул. Шоссейная');">
+												г. о. Домодедово, д. Заболотье, ул. Шоссейная<span></span></li>
+
+											<li
+												onClick="return go_to(37.822427981474966, 55.28050106485382, 'Каширское шоссе, 58-й км, стр. 4');">
+												г. Домодедово, Каширское шоссе, 58-й км, стр. 4<span></span></li>
+
+											<li onClick="return go_to(37.758985, 55.45673, 'Каширское шоссе, 2а');">г.
+												Домодедово, Каширское шоссе, 2а<span></span></li>
+
+											<li onClick="return go_to(39.062818, 55.369515, '2-й микрорайон, д.15');">г.
+												Егорьевск, 2-й микрорайон, д.15<span></span></li>
+
+											<li onClick="return go_to(39.053709, 55.372298, 'пр-т. Ленина, 6а');">г.
+												Егорьевск,
+												пр-т. Ленина, 6а<span></span></li>
+
+											<li onClick="return go_to(38.073952, 55.60551, 'ул. Баженова, 11');">г.
+												Жуковский,
+												ул. Баженова, 11<span></span></li>
+
+											<li
+												onClick="return go_to(38.09521230422957, 55.595818695149724, 'ул. Мясищева, 17Б');">
+												г. Жуковский, ул. Мясищева, 17Б<span></span></li>
+
+											<li
+												onClick="return go_to(38.89111088822115, 54.75985608910026, 'ул. Ленинская, 47 ');">
+												г. Зарайск, ул. Ленинская, 47 <span></span></li>
+
+											<li onClick="return go_to(36.859592, 55.73884, 'ул. Пролетарская, 54');">г.
+												Звенигород, ул. Пролетарская, 54<span></span></li>
+
+											<li
+												onClick="return go_to(37.93365496693364, 55.97815986757652, 'ул. Кирова, 2Б, стр. 1');">
+												г. Ивантеевка, ул. Кирова, 2Б, стр. 1<span></span></li>
+
+											<li
+												onClick="return go_to(36.789946, 55.856513, 'дер. Давыдовское, д. 52а');">
+												г.
+												Истра, дер. Давыдовское, д. 52а<span></span></li>
+
+											<li onClick="return go_to(37.120678, 55.811386, 'дер. Лешково, зд. 183');">
+												г.о.
+												Истра, дер. Лешково, зд. 183<span></span></li>
+
+											<li
+												onClick="return go_to(37.111750185179865, 55.876732784278296, 'дер. Талицы, зд. 71');">
+												г.о. Истра, дер. Талицы, зд. 71<span></span></li>
+
+											<li
+												onClick="return go_to(36.933496, 55.907319, 'д. Высоково, ул. Центральная, 40');">
+												г.о. Истра, д. Высоково, ул. Центральная, 40<span></span></li>
+
+											<li
+												onClick="return go_to(37.024860867796626, 55.80849737718654, 'д. Покровское, ул. Центральная, 82Б');">
+												Истринский р-н, д. Покровское, ул. Центральная, 82Б<span></span><span
+													class="slcsp">*</span></li>
+
+											<li onClick="return go_to(38.246501, 54.836814, 'ул. Садовая, 32');">г.
+												Кашира,
+												ул.
+												Садовая, 32<span></span></li>
+
+											<li onClick="return go_to(36.68911, 56.365662, 'Ленинградское ш., 16с2');">
+												г.
+												Клин,
+												Ленинградское ш., 16с2<span></span></li>
+
+											<li
+												onClick="return go_to(36.76168378836059, 56.322474955150376, 'Ленинградское ш., вл. 91, стр. 2');">
+												г. Клин, Ленинградское ш., вл. 91, стр. 2<span></span></li>
+
+											<li
+												onClick="return go_to(36.75368875197565, 56.31820060403961, 'ул. 60 лет Комсомола, 2');">
+												г. Клин, ул. 60 лет Комсомола, 2<span></span></li>
+
+											<li onClick="return go_to(37.861833, 55.653009, 'Полевой проезд, 1/1');">г.
+												Котельники, Полевой проезд, 1/1<span></span></li>
+
+											<li
+												onClick="return go_to(38.726183, 55.13303, 'п. Радужный, ул. Московская, 18');">
+												г. Коломна, п. Радужный, ул. Московская, 18<span></span></li>
+
+											<li onClick="return go_to(38.745578, 55.057332, 'ул. Девичье поле, 10а');">
+												г.
+												Коломна, ул. Девичье поле, 10а<span></span></li>
+
+											<li
+												onClick="return go_to(38.807121, 55.083683, 'ул. Октябрьской Революции, д.379');">
+												г. Коломна, ул. Октябрьской Революции, д.379<span></span></li>
+
+											<li
+												onClick="return go_to(38.72550928570519, 55.08279541593107, 'ул. Подлипки-6, д. 245А');">
+												г. Коломна, ул. Подлипки-6, д. 245А<span></span></li>
+
+											<li onClick="return go_to(37.865543, 55.911012, 'пр. Космонавтов, 26');">г.
+												Королев,
+												пр. Космонавтов, 26<span></span></li>
+
+											<li onClick="return go_to(37.869065, 55.943028, 'ул. Советская, д. 39');">г.
+												Королев, ул. Советская, д. 39<span></span></li>
+
+											<li
+												onClick="return go_to(37.36242973016325, 55.817793340674136, 'Красногорский б-р, 3А');">
+												г. Красногорск, Красногорский б-р, 3А<span></span></li>
+
+											<li
+												onClick="return go_to(37.18213789814628, 55.84383235139653, 'р.п. Нахабино, ул. Вокзальная, 11А');">
+												г.о. Красногорск, р.п. Нахабино, ул. Вокзальная, 11А<span></span></li>
+
+											<li
+												onClick="return go_to(37.150239797622284, 55.83668313046006, 'р.п. Нахабино, ул. Инженерная, 2А');">
+												г.о. Красногорск, р.п. Нахабино, ул. Инженерная, 2А<span></span></li>
+
+											<li
+												onClick="return go_to(37.236560338622674, 55.75896399441864, 'село Ильинское, ул. Ленина, 11');">
+												г.ок. Красногорск, село Ильинское, ул. Ленина, 11<span></span></li>
+
+											<li onClick="return go_to(37.324758, 55.815701, 'ул. Жуковского, 7 ');">г.
+												Красногорск, ул. Жуковского, 7 <span></span></li>
+
+											<li
+												onClick="return go_to(37.36666762565586, 55.8263643159793, 'ул. им. Егорова, 5А');">
+												г. Красногорск, ул. им. Егорова, 5А<span></span></li>
+
+											<li
+												onClick="return go_to(37.812659, 55.53051, 'пос. Мещерино, 31-й км, зд. 6');">
+												г.о. Ленинский, пос. Мещерино, 31-й км, зд. 6<span></span></li>
+
+											<li onClick="return go_to(39.024765, 54.966634, 'ул. Куйбышева, 57');">г.
+												Луховицы,
+												ул. Куйбышева, 57<span></span></li>
+
+											<li
+												onClick="return go_to(37.963893387617816, 55.66140178074531, 'п. Томилино, ул. Гаршина, 5Б');">
+												Люберецкий р-н, п. Томилино, ул. Гаршина, 5Б<span></span></li>
+
+											<li
+												onClick="return go_to(37.858734, 55.676555, 'Новорязанское шоссе, 1 А');">
+												г.
+												Люберцы, Новорязанское шоссе, 1 А<span></span></li>
+
+											<li
+												onClick="return go_to(37.916586, 55.659967, 'Октябрьский пр-кт, 409 A');">
+												г.
+												Люберцы, Октябрьский пр-кт, 409 A<span></span></li>
+
+											<li
+												onClick="return go_to(37.968130764555944, 55.61458386490221, 'п. Октябрьский, ул. Ленина, 55');">
+												г. Люберцы, п. Октябрьский, ул. Ленина, 55<span></span></li>
+
+											<li
+												onClick="return go_to(38.009543, 55.644597, 'р.п. Малаховка, ул. Рельсовая, 3Б');">
+												г.о. Люберцы, р.п. Малаховка, ул. Рельсовая, 3Б<span></span></li>
+
+											<li
+												onClick="return go_to(37.88969, 55.687761, 'ул. Инициативная, стр. 2Б / ул. Митрофанова, 1А');">
+												г. Люберцы, ул. Инициативная, стр. 2Б / ул. Митрофанова, 1А<span></span>
+											</li>
+
+											<li
+												onClick="return go_to(37.88104224732877, 55.677188505918956, 'ул. Комсомольская, 21');">
+												г. Люберцы, ул. Комсомольская, 21<span></span></li>
+
+											<li onClick="return go_to(37.898601, 55.697914, 'ул. С.П. Попова, 21б');">г.
+												Люберцы, ул. С.П. Попова, 21б<span></span></li>
+
+											<li
+												onClick="return go_to(36.029513, 55.49595, 'ул. 1-ая Железнодорожная, 46');">
+												г.
+												Можайск, ул. 1-ая Железнодорожная, 46<span></span><span
+													class="slcsp">*</span>
+											</li>
+
+											<li onClick="return go_to(36.032046, 55.504884, 'ул. Мира 11/1');">г.
+												Можайск,
+												ул.
+												Мира 11/1<span></span></li>
+
+											<li
+												onClick="return go_to(37.748735, 55.891809, 'ул. Коммунистическая, 1');">
+												г.
+												Мытищи, ул. Коммунистическая, 1<span></span></li>
+
+											<li onClick="return go_to(37.738899, 55.906254, 'ул. Щербакова, 2к1');">г.
+												Мытищи,
+												ул. Щербакова, 2к1<span></span></li>
+
+											<li
+												onClick="return go_to(36.71414488227809, 55.41130280240325, 'Кубинское шоссе, 7a');">
+												г. Наро-Фоминск, Кубинское шоссе, 7a<span></span></li>
+
+											<li onClick="return go_to(36.72807, 55.383152, 'ул. Ленина, 8');">г.
+												Наро-Фоминск,
+												ул. Ленина, 8<span></span></li>
+
+											<li
+												onClick="return go_to(36.71568794575465, 55.38042191396323, 'ул. Маршала Жукова, 52 к.1');">
+												г. Наро-Фоминск, ул. Маршала Жукова, 52 к.1<span></span></li>
+
+											<li
+												onClick="return go_to(38.33779893652308, 55.844709708790965, 'д. Ельня, ул. Калинина, 14а');">
+												г. Ногинск, д. Ельня, ул. Калинина, 14а<span></span></li>
+
+											<li
+												onClick="return go_to(38.43642579363988, 55.86040116822424, 'наб. 60-летия Октября, 4');">
+												г. Ногинск, наб. 60-летия Октября, 4<span></span></li>
+
+											<li
+												onClick="return go_to(38.461926, 55.876642, 'ул. Советской конституции, д. 3');">
+												г. Ногинск, ул. Советской конституции, д. 3<span></span></li>
+
+											<li
+												onClick="return go_to(37.23728, 55.662329, 'село Акулово, ул. Центральная, д.36А');">
+												Одинцовский городской округ, село Акулово, ул. Центральная,
+												д.36А<span></span>
+											</li>
+
+											<li
+												onClick="return go_to(37.316664, 55.698406, 'д. Лохино, ул. Родниковая, стр. 22а');">
+												Одинцовский р-н, д. Лохино, ул. Родниковая, стр. 22а<span></span></li>
+
+											<li onClick="return go_to(38.989354, 55.808457, 'ул. Ленина, д. 80');">г.
+												Орехово-Зуево, ул. Ленина, д. 80<span></span></li>
+
+											<li
+												onClick="return go_to(38.651713, 55.77194, 'ул. Большая Покровская, д. 35');">
+												г.
+												Павловский Посад, ул. Большая Покровская, д. 35<span></span><span
+													class="slcsp">*</span></li>
+
+											<li
+												onClick="return go_to(38.6809775846858, 55.77607415246524, 'ул. Привокзальная, 20 В');">
+												г. Павловский Посад, ул. Привокзальная, 20 В<span></span></li>
+
+											<li
+												onClick="return go_to(37.518111, 55.358571, 'мкрн. Климовск, ул. Победы, 3');">
+												г. Подольск, мкрн. Климовск, ул. Победы, 3<span></span></li>
+
+											<li
+												onClick="return go_to(37.48358, 55.41283, 'мкрн. Кузнечики, ул. Академика Доллежаля, 39');">
+												г. Подольск, мкрн. Кузнечики, ул. Академика Доллежаля, 39<span></span>
+											</li>
+
+											<li
+												onClick="return go_to(37.56503573016321, 55.48302687866108, 'пр. Юных Ленинцев, д. 67 ');">
+												г. Подольск, пр. Юных Ленинцев, д. 67 <span></span></li>
+
+											<li onClick="return go_to(37.549965, 55.429139, 'ул. Комсомольская, 3');">г.
+												Подольск, ул. Комсомольская, 3<span></span></li>
+
+											<li
+												onClick="return go_to(37.57837113757146, 55.407670206969044, 'ул. Машиностроителей, 32Б (с 7:30 до 22:30) ');">
+												г. Подольск, ул. Машиностроителей, 32Б (с 7:30 до 22:30) <span></span>
+											</li>
+
+											<li
+												onClick="return go_to(37.220885, 55.525288, 'п. Птичное, ул. Центральная, 15А/2, стр. 1');">
+												Поселение Первомайское, п. Птичное, ул. Центральная, 15А/2, стр.
+												1<span></span>
+											</li>
+
+											<li onClick="return go_to(37.830787, 56.004101, 'Акуловское ш., 10Б');">г.
+												Пушкино,
+												Акуловское ш., 10Б<span></span></li>
+
+											<li
+												onClick="return go_to(38.24822575197505, 55.5781018846272, 'д. Дергаево, ул. Октябрьская, 35а');">
+												Раменский район, д. Дергаево, ул. Октябрьская, 35а<span></span></li>
+
+											<li
+												onClick="return go_to(38.00324350939013, 55.59008563049335, 'д. Островцы, ул. Центральная, 50');">
+												Раменский район, д. Островцы, ул. Центральная, 50<span></span></li>
+
+											<li
+												onClick="return go_to(38.08534330821191, 55.609671081532916, 'с. Быково, ул. Театральная, стр. 7Б');">
+												Раменский район, с. Быково, ул. Театральная, стр. 7Б<span></span></li>
+
+											<li onClick="return go_to(38.528024, 55.588883, 'с. Карпово, д. 195');">
+												Раменский
+												район, с. Карпово, д. 195<span></span></li>
+
+											<li
+												onClick="return go_to(38.21927486906381, 55.583828719109526, 'Северное шоссе, стр. 17');">
+												г. Раменское, Северное шоссе, стр. 17<span></span></li>
+
+											<li
+												onClick="return go_to(38.269722, 55.575266, 'Транспортный проезд, 13');">
+												г.
+												Раменское, Транспортный проезд, 13<span></span></li>
+
+											<li
+												onClick="return go_to(38.21316692659701, 55.56935421877543, 'ул. Десантная, 1 В ');">
+												г. Раменское, ул. Десантная, 1 В <span></span></li>
+
+											<li
+												onClick="return go_to(38.25608434127723, 55.5706877269363, 'ул. Красноармейская, стр. 97а/2');">
+												г. Раменское, ул. Красноармейская, стр. 97а/2<span></span></li>
+
+											<li
+												onClick="return go_to(38.24828634652543, 55.56032004560606, 'ул. Михалевича, 72');">
+												г. Раменское, ул. Михалевича, 72<span></span></li>
+
+											<li onClick="return go_to(37.847838, 55.766045, 'ул. Победы, 31 ');">г.
+												Реутов,
+												ул.
+												Победы, 31 <span></span></li>
+
+											<li
+												onClick="return go_to(36.20291251191631, 55.71106251225182, 'мкр Северное сияние, 12');">
+												г. Руза, мкр Северное сияние, 12<span></span></li>
+
+											<li onClick="return go_to(36.211502, 55.69317, 'ул. Красная, 59 ');">г.
+												Руза,
+												ул.
+												Красная, 59 <span></span></li>
+
+											<li
+												onClick="return go_to(37.459113149459085, 54.91335574427308, 'Борисовское шоссе, 119');">
+												г.о. Серпухов, Борисовское шоссе, 119<span></span><span
+													class="slcsp">*</span>
+											</li>
+
+											<li onClick="return go_to(37.42845, 54.916796, 'Борисовское шоссе, 5');">г.
+												Серпухов, Борисовское шоссе, 5<span></span></li>
+
+											<li
+												onClick="return go_to(37.29677357678172, 54.89200371836954, 'дер. Калиново, 99');">
+												г. Серпухов, дер. Калиново, 99<span></span></li>
+
+											<li
+												onClick="return go_to(37.45430880012168, 54.92410574726892, 'ул. Дзержинского, 31/10');">
+												г. Серпухов, ул. Дзержинского, 31/10<span></span></li>
+
+											<li
+												onClick="return go_to(37.09774082803327, 55.97970799186506, 'д. Голубое, Тверецкий проезд, стр. 17А');">
+												г. Солнечногорск, д. Голубое, Тверецкий проезд, стр. 17А<span></span>
+											</li>
+
+											<li
+												onClick="return go_to(36.969492, 56.184034, 'ул. Обуховская, стр. 5М');">
+												г.
+												Солнечногорск, ул. Обуховская, стр. 5М<span></span></li>
+
+											<li
+												onClick="return go_to(37.10524457931308, 55.96394610266746, 'д. Горетовка, тер. Горетовский квартал №1, стр. 3/7');">
+												г.о. Солнечногорск, д. Горетовка, тер. Горетовский квартал №1, стр.
+												3/7<span></span></li>
+
+											<li
+												onClick="return go_to(37.23217160055491, 55.908399469935695, 'дер. Благовещенка, Липовая аллея, стр. 1');">
+												Солнечногорский район, дер. Благовещенка, Липовая аллея, стр.
+												1<span></span>
+											</li>
+
+											<li
+												onClick="return go_to(36.91747080685343, 56.14573210430104, 'дер. Обухово, 180 ');">
+												Солнечногорский район, дер. Обухово, 180 <span></span></li>
+
+											<li onClick="return go_to(38.182199, 55.80274, 'ул. Кирова, 19');">г. Старая
+												Купавна, ул. Кирова, 19<span></span></li>
+
+											<li onClick="return go_to(38.077887, 54.899607, 'пер. Металлургов, 4');">г.
+												Ступино,
+												пер. Металлургов, 4<span></span></li>
+
+											<li onClick="return go_to(38.072803, 54.90071, 'ул. Пристанционная, 6');">г.
+												Ступино, ул. Пристанционная, 6<span></span></li>
+
+											<li onClick="return go_to(37.538736, 56.722919, 'ул. Советская, 23А');">г.
+												Талдом,
+												ул. Советская, 23А<span></span></li>
+
+											<li
+												onClick="return go_to(38.03369952380081, 55.95864237171307, 'ул. Горького, 10 А');">
+												г. Фрязино, ул. Горького, 10 А<span></span></li>
+
+											<li onClick="return go_to(38.051369, 55.955257, 'ул. Школьная д. 1');">г.
+												Фрязино,
+												ул. Школьная д. 1<span></span></li>
+
+											<li onClick="return go_to(37.401725, 55.898018, 'Молодежный проезд д.9Б');">
+												г.
+												Химки, Молодежный проезд д.9Б<span></span></li>
+
+											<li onClick="return go_to(37.304896, 55.942741, 'ул. Полевая, стр. 2');">г.
+												Химки,
+												ул. Полевая, стр. 2<span></span></li>
+
+											<li
+												onClick="return go_to(37.423269746032624, 55.88585880227616, 'пр. Юбилейный, 3А');">
+												г. Химки, пр. Юбилейный, 3А<span></span></li>
+
+											<li onClick="return go_to(37.467455, 55.148961, 'ул. Береговая, 31Ак1');">г.
+												Чехов,
+												ул. Береговая, 31Ак1<span></span></li>
+
+											<li onClick="return go_to(37.466485, 55.156595, 'ул. Полиграфистов, 1 ');">
+												г.
+												Чехов,
+												ул. Полиграфистов, 1 <span></span></li>
+
+											<li onClick="return go_to(37.475719, 55.175427, 'ул. Уездная, 19Б');">г.
+												Чехов,
+												ул.
+												Уездная, 19Б<span></span></li>
+
+											<li onClick="return go_to(39.522899, 55.582635, 'ул. Спортивная, д.2');">г.
+												Шатура,
+												ул. Спортивная, д.2<span></span></li>
+
+											<li
+												onClick="return go_to(37.971401, 55.897887, 'кв-л Варежки-3, Изумрудный б-р, 2');">
+												г.о. Щёлково, кв-л Варежки-3, Изумрудный б-р, 2<span></span></li>
+
+											<li onClick="return go_to(38.001405, 55.923942, 'пр. Пролетарский, 10');">г.
+												Щёлково, пр. Пролетарский, 10<span></span></li>
+
+											<li onClick="return go_to(37.988163, 55.927256, 'ул. Талсинская, 6Б');">г.
+												Щёлково,
+												ул. Талсинская, 6Б<span></span></li>
+
+											<li onClick="return go_to(37.963109, 55.926212, 'ул. Центральная, 71/1');">
+												г.
+												Щёлково, ул. Центральная, 71/1<span></span></li>
+
+											<li
+												onClick="return go_to(38.04179266402996, 55.90672780257435, 'ул. Чкаловская, 4А (c 7.30 до 22.00)');">
+												г. Щёлково, ул. Чкаловская, 4А (c 7.30 до 22.00)<span></span></li>
+
+											<li onClick="return go_to(38.782238, 55.880929, 'ул. Горького, 1 Б');">г.
+												Электрогорск, ул. Горького, 1 Б<span></span></li>
+
+											<li onClick="return go_to(38.462914, 55.799026, 'ул. К. Маркса, 27');">г.
+												Электросталь, ул. К. Маркса, 27<span></span></li>
+
+											<li
+												onClick="return go_to(38.43435701985048, 55.76841468512611, 'ул. Ялагина 1 ');">
+												г. Электросталь, ул. Ялагина 1 <span></span></li>
+
+
+											<li class="alco"><span>*</span>Алкогольная продукция временно не
+												представлена
+											</li>
+										</ul>
+									</div>
+									<div class="region box-more boxes-b">
+										<h3><a class="close" href="#">Регионы<em></em></a></h3>
+										<ul style="display:none">
+											<li onClick="return go_to(38.716122, 56.375339, 'ул. Королева, 6а');">г.
+												Александров, ул. Королева, 6а<span></span></li>
+
+											<li
+												onClick="return go_to(38.71755, 56.398386, 'ул. Ленина, д 13к1, стр.1');">
+												г.
+												Александров, ул. Ленина, д 13к1, стр.1<span></span></li>
+
+											<li
+												onClick="return go_to(37.11173045634385, 54.51104435885793, 'ул. Тульская, 125 ');">
+												г. Алексин, ул. Тульская, 125 <span></span></li>
+
+											<li
+												onClick="return go_to(38.11039240740902, 53.77465621689434, 'Заводской проезд, д. 6Б');">
+												г. Богородицк, Заводской проезд, д. 6Б<span></span></li>
+
+											<li
+												onClick="return go_to(38.301201580226554, 53.96555297661668, 'ул. Октябрьская, 101а');">
+												г.о. Донской, ул. Октябрьская, 101а<span></span></li>
+
+											<li
+												onClick="return go_to(36.30426711904906, 54.536731404127785, 'Грабцевское шоссе, 47');">
+												г. Калуга, Грабцевское шоссе, 47<span></span></li>
+
+											<li
+												onClick="return go_to(36.30967125794965, 54.50164670905574, 'ул. Болдина, 87, к. 2 ');">
+												г. Калуга, ул. Болдина, 87, к. 2 <span></span></li>
+
+											<li
+												onClick="return go_to(36.222561, 54.493043, 'ул. Генерала Попова, 2а');">
+												г.
+												Калуга, ул. Генерала Попова, 2а<span></span></li>
+
+											<li onClick="return go_to(36.211871, 54.493843, 'ул. Спартака, 12');">г.
+												Калуга,
+												ул.
+												Спартака, 12<span></span></li>
+
+											<li onClick="return go_to(35.922353, 54.804462, 'ул. Некрасова, 13');">г.
+												Кондрово,
+												ул. Некрасова, 13<span></span></li>
+
+											<li
+												onClick="return go_to(36.66112146032681, 55.17365289940477, 'г. Балабаново, ул. 50 лет Октября, 20А');">
+												Калужская обл., г. Балабаново, ул. 50 лет Октября, 20А<span></span></li>
+
+											<li
+												onClick="return go_to(36.78621292855804, 56.71775098228098, 'Тверская область, Привокзальная пл., 3');">
+												г. Конаково, Тверская область, Привокзальная пл., 3<span></span></li>
+
+											<li
+												onClick="return go_to(38.32071135316327, 54.026931990210194, 'Рязанское ш., 15 ');">
+												г. Новомосковск, Рязанское ш., 15 <span></span></li>
+
+											<li
+												onClick="return go_to(38.26666449212544, 54.01622800778297, 'ул. Мира, 3Б');">
+												г.
+												Новомосковск, ул. Мира, 3Б<span></span></li>
+
+											<li
+												onClick="return go_to(38.28838613624498, 54.026458420577725, 'ул. Трудовые резервы, 60 Д');">
+												г. Новомосковск, ул. Трудовые резервы, 60 Д<span></span></li>
+
+											<li onClick="return go_to(36.609106, 55.123924, 'пр. Маркса, 87');">г.
+												Обнинск,
+												пр.
+												Маркса, 87<span></span></li>
+
+											<li onClick="return go_to(36.615744, 55.117896, 'ул. Энгельса, 9 ');">г.
+												Обнинск,
+												ул. Энгельса, 9 <span></span></li>
+
+											<li onClick="return go_to(36.621601, 55.111531, 'ул. Курчатова 31а ');">г.
+												Обнинск,
+												ул. Курчатова 31а <span></span></li>
+
+											<li
+												onClick="return go_to(36.61719342964122, 55.09306993893507, 'ул. Красных Зорь, 8');">
+												г. Обнинск, ул. Красных Зорь, 8<span></span></li>
+
+											<li onClick="return go_to(36.5762, 55.130698, 'ул. Славского, 1');">г.
+												Обнинск,
+												ул.
+												Славского, 1<span></span></li>
+
+											<li onClick="return go_to(36.582776, 55.109235, 'ул. Усачева, 3');">г.
+												Обнинск,
+												ул.
+												Усачева, 3<span></span></li>
+
+											<li
+												onClick="return go_to(39.17367398147559, 55.917292048527585, 'ул. Ленина, 93');">
+												г. Покров, ул. Ленина, 93<span></span><span class="slcsp">*</span></li>
+
+											<li onClick="return go_to(38.885482, 56.74992, 'ул. Октябрьская, 34а');">г.
+												Переславль-Залесский, ул. Октябрьская, 34а<span></span></li>
+
+											<li onClick="return go_to(34.3269, 56.254467, 'ул. Большая Спасская, 24');">
+												г.
+												Ржев,
+												ул. Большая Спасская, 24<span></span></li>
+
+											<li
+												onClick="return go_to(39.59825, 54.66552, '2-й Сиреневый проезд, стр. 2');">
+												г.
+												Рязань, 2-й Сиреневый проезд, стр. 2<span></span></li>
+
+											<li
+												onClick="return go_to(39.70070634722127, 54.63248543681293, 'Московское шоссе, 6 (с 7.30 до 22.00)');">
+												г. Рязань, Московское шоссе, 6 (с 7.30 до 22.00)<span></span></li>
+
+											<li
+												onClick="return go_to(39.79006032275323, 54.62579364070618, 'ул. Быстрецкая, 12');">
+												г. Рязань, ул. Быстрецкая, 12<span></span></li>
+
+											<li onClick="return go_to(39.713908, 54.602257, 'ул. Гоголя, 41');">г.
+												Рязань,
+												ул.
+												Гоголя, 41<span></span></li>
+
+											<li
+												onClick="return go_to(39.7926807420496, 54.60514035996759, 'ул. Зубковой, д.14a');">
+												г. Рязань, ул. Зубковой, д.14a<span></span></li>
+
+											<li
+												onClick="return go_to(39.666486, 54.6655, 'ул. Интернациональная, 20');">
+												г.
+												Рязань, ул. Интернациональная, 20<span></span></li>
+
+											<li
+												onClick="return go_to(39.656407, 54.674153, 'ул. Станкозаводская, 31');">
+												г.
+												Рязань, ул. Станкозаводская, 31<span></span></li>
+
+											<li
+												onClick="return go_to(35.859370436492235, 56.884288646647164, '2-я ул. Красина, 84');">
+												г. Тверь, 2-я ул. Красина, 84<span></span></li>
+
+											<li onClick="return go_to(35.902706, 56.824414, 'б-р Гусева,14, стр. 3');">
+												г.
+												Тверь,
+												б-р Гусева,14, стр. 3<span></span></li>
+
+											<li
+												onClick="return go_to(35.88141998925603, 56.87263302172143, 'пер. Артиллерийский, 3');">
+												г. Тверь, пер. Артиллерийский, 3<span></span></li>
+
+											<li onClick="return go_to(35.870098, 56.853292, 'пр-т Калинина, 13а');">г.
+												Тверь,
+												пр-т Калинина, 13а<span></span></li>
+
+											<li onClick="return go_to(35.861635, 56.825365, 'ул. Дружинная, д.2');">г.
+												Тверь,
+												ул. Дружинная, д.2<span></span></li>
+
+											<li
+												onClick="return go_to(35.89421984915034, 56.821925850842035, 'ул. Можайского, 56а');">
+												г. Тверь, ул. Можайского, 56а<span></span></li>
+
+											<li
+												onClick="return go_to(35.842986, 56.883086, 'ул. Паши Савельевой, 44');">
+												г.
+												Тверь, ул. Паши Савельевой, 44<span></span></li>
+
+											<li
+												onClick="return go_to(37.56477965872058, 54.19547371909537, 'Одоевское ш., 12');">
+												г. Тула, Одоевское ш., 12<span></span></li>
+
+											<li
+												onClick="return go_to(37.63156146298148, 54.17485629808135, 'ул. Оборонная, д. 102');">
+												г. Тула, ул. Оборонная, д. 102<span></span></li>
+
+											<li onClick="return go_to(37.574345, 54.173817, 'ул. Болдина, 96А');">г.
+												Тула,
+												ул.
+												Болдина, 96А<span></span></li>
+
+											<li
+												onClick="return go_to(37.618434821577544, 54.24178831461357, 'ул. Карпово, 105');">
+												г. Тула, ул. Карпово, 105<span></span></li>
+
+											<li
+												onClick="return go_to(37.60491173022383, 54.15982746748918, 'ул. Рязанская, 3л');">
+												г. Тула, ул. Рязанская, 3л<span></span></li>
+
+											<li onClick="return go_to(37.660233, 54.205621, 'ул. Шухова, 1а');">г. Тула,
+												ул.
+												Шухова, 1а<span></span></li>
+
+											<li onClick="return go_to(37.581487, 54.146719, 'Щекинское шоссе, 4');">г.
+												Тула,
+												Щекинское шоссе, 4<span></span></li>
+
+											<li
+												onClick="return go_to(37.43713191750893, 54.74848467795879, 'д. Малахово,  ул. Дорожная, д.24, стр.1, пом. 2');">
+												Тульская обл., д. Малахово, ул. Дорожная, д.24, стр.1, пом.
+												2<span></span>
+											</li>
+
+											<li
+												onClick="return go_to(37.676864505278985, 54.21673009651429, 'ул. Хворостухина, 27А');">
+												г. Тула, ул. Хворостухина, 27А<span></span></li>
+
+											<li
+												onClick="return go_to(38.175808900802224, 53.97235951058197, 'ул. Заводская стр. 23 ');">
+												г. Узловая, ул. Заводская стр. 23 <span></span></li>
+
+											<li onClick="return go_to(38.158178, 53.981586, 'ул. Беклемищева, 27');">г.
+												Узловая,
+												ул. Беклемищева, 27<span></span></li>
+
+											<li
+												onClick="return go_to(37.50165067990022, 54.02254405394388, 'ул. Гагарина, зд. 2');">
+												г. Щекино, ул. Гагарина, зд. 2<span></span></li>
+
+
+											<li class="alco"><span>*</span>Алкогольная продукция временно не
+												представлена
+											</li>
+										</ul>
+									</div>
+									<div class="boxes-map-block">
+										<div class="boxes-map-block__text">Записаться на собеседование:</div>
+										<a href="tel:88005002755" class="boxes-map-block__tel">8-800-500-27-55</a>
+										<div class="boxes-map-block__label">Звонок <span>БЕСПЛАТНЫЙ</span> по всей
+											территории Российской Федерации</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<section class="boxes-advantages boxes-advantages_padding">
+							<h2 class="boxes-advantages__title boxes-title"><span>ДА!</span> У нас много преимуществ
+							</h2>
+							<div class="boxes-advantages__body">
+								<div class="boxes-advantages__item">
+									<div class="boxes-advantages__media">
+										<div class="boxes-advantages__image">
+											<img src="img/boxes-advantages1.svg" alt="">
+										</div>
+									</div>
+
+									<div class="boxes-advantages__content">
+										<div class="boxes-advantages__head">Уверенность в завтрашнем дне</div>
+										<div class="boxes-advantages__text">Достойная зарплата + премии, оформление по
+											ТК РФ
+											с
+											1-го дня.</div>
+									</div>
+								</div>
+								<div class="boxes-advantages__item">
+									<div class="boxes-advantages__media">
+										<div class="boxes-advantages__image">
+											<img src="img/boxes-advantages2.svg" alt="">
+										</div>
+									</div>
+
+									<div class="boxes-advantages__content">
+										<div class="boxes-advantages__head">Удобный сменный график</div>
+										<div class="boxes-advantages__text">Полная и частичная занятость, ночные смены.
+											Возможность совмещать работу с учёбой.</div>
+									</div>
+								</div>
+								<div class="boxes-advantages__item">
+									<div class="boxes-advantages__media">
+										<div class="boxes-advantages__image">
+											<img src="img/boxes-advantages3.svg" alt="">
+										</div>
+									</div>
+
+									<div class="boxes-advantages__content">
+										<div class="boxes-advantages__head">Корпоративная культура</div>
+										<div class="boxes-advantages__text">Выездные мероприятия для сотрудников,
+											фотосессии
+											сотрудников, подарки на праздники.</div>
+									</div>
+								</div>
+								<div class="boxes-advantages__item">
+									<div class="boxes-advantages__media">
+										<div class="boxes-advantages__image">
+											<img src="img/boxes-advantages4.svg" alt="">
+										</div>
+									</div>
+
+									<div class="boxes-advantages__content">
+										<div class="boxes-advantages__head">Нет опыта? <br> Обучим!</div>
+										<div class="boxes-advantages__text">Оплачиваем обучение и стажировку + за каждым
+											новым
+											сотрудников закрепляется наставник-помощник.</div>
+									</div>
+								</div>
+								<div class="boxes-advantages__item">
+									<div class="boxes-advantages__media">
+										<div class="boxes-advantages__image">
+											<img src="img/boxes-advantages5.svg" alt="">
+										</div>
+									</div>
+
+									<div class="boxes-advantages__content">
+										<div class="boxes-advantages__head">Карьерному росту - ДА!</div>
+										<div class="boxes-advantages__text">Бесплатные тренинги и обучения, чтобы вы
+											достигали
+											новых вершин.</div>
+									</div>
+								</div>
+								<div class="boxes-advantages__item">
+									<div class="boxes-advantages__media">
+										<div class="boxes-advantages__image">
+											<img src="img/boxes-advantages6.svg" alt="">
+										</div>
+									</div>
+
+									<div class="boxes-advantages__content">
+										<div class="boxes-advantages__head">Работай рядом с домом</div>
+										<div class="boxes-advantages__text">Более 200 супермаркетов по Москве и ЦФО и
+											это
+											только
+											начало!</div>
+									</div>
+								</div>
+							</div>
+						</section>
+
+						<div class="boxes-border">
+							<section class="boxes-need">
+								<h2 class="boxes-need__title boxes-title">Что нужно делать?</h2>
+								<div class="boxes-need__body">
+									<div class="boxes-need__slider swiper">
+										<div class="boxes-need__wrapper swiper-wrapper">
+											<div class="boxes-need__slide swiper-slide">
+												<img src="img/boxes-need1.jpg" alt="магазин Да">
+											</div>
+											<div class="boxes-need__slide swiper-slide">
+												<img src="img/boxes-career-image.jpg" alt="магазин Да">
+											</div>
+										</div>
+										<button type="button" class="swiper-button-prev"></button>
+										<button type="button" class="swiper-button-next"></button>
+									</div>
+									<ul class="boxes-need__list">
+										<li class="boxes-need__item">
+											Принимать, выкладывать, пополнять товары;
+										</li>
+										<li class="boxes-need__item">
+											Обслуживать посетителей магазина на кассе;
+										</li>
+										<li class="boxes-need__item">
+											Допекать хлебобулочные изделия;
+										</li>
+										<li class="boxes-need__item">
+											Помогать посетителям по возникающим вопросам;
+										</li>
+										<li class="boxes-need__item">
+											Поддерживать чистоту и порядок в супермаркет и подсобных
+											помещениях.
+										</li>
+									</ul>
+								</div>
+							</section>
+
+							<section class="boxes-need">
+								<h2 class="boxes-need__title boxes-title">Какие есть графики работы?</h2>
+								<div class="boxes-need__body">
+									<div class="boxes-need__video">
+										<video loading="lazy" preload="metadata">
+											<source type="video/mp4" src="video/1.mp4">
+										</video>
+										<div class="boxes-need__play"></div>
+									</div>
+									<ul class="boxes-need__list">
+										<li class="boxes-need__item">
+											<span>10 часов</span> в неделю (1 - 2 рабочих дня)
+										</li>
+										<li class="boxes-need__item">
+											<span>20 часов</span> в неделю (2 - 3 рабочих дня)
+										</li>
+										<li class="boxes-need__item">
+											<span>30 часов</span> в неделю (3 - 4 рабочих дня)
+										</li>
+										<li class="boxes-need__item">
+											<span>40 часов</span> в неделю (2*2 или 5*2)
+										</li>
+									</ul>
+								</div>
+							</section>
+						</div>
+
+						<div class="boxes-form boxes-form_margin">
+							<h2 class="boxes-form__title boxes-title">Мы готовы тебя пригласить!</h2>
+							<div class="boxes-form__sub-title boxes-title">Заполни анкету!</div>
+							<div class="boxes-form__label">Нажимая кнопку «отправить анкету» Вы подтверждаете, что даете
+								<a href="https://market-da.ru/about/policy.html">согласие на обработку</a> персональных
+								данных, указанных в данной форме.
+							</div>
+							<div id="form_158160_1"><iframe scrolling="no" id="form158160-435" name="form158160-435"
+									src="https://formdesigner.ru/form/iframe/158160?center=1"
+									style="height: 540px; width: 100%; border: 0px;"></iframe></div>
+							<script type="text/javascript">
+								(function (d, w, c) {
+									(w[c] = w[c] || []).push({ formId: 158160, host: "formdesigner.ru", formHeight: 100, el: "form_158160_1", center: 1, scroll: 0 });
+									var s = d.createElement("script"), g = "getElementsByTagName";
+									s.type = "text/javascript"; s.charset = "UTF-8"; s.async = true;
+									s.src = (d.location.protocol == "https:" ? "https:" : "http:") + "//formdesigner.ru/js/iform.js?v=0.0.2";
+									var h = d[g]("head")[0] || d[g]("body")[0];
+									h.appendChild(s);
+								})(document, window, "fdforms");
+							</script>
+						</div>
+					</div>
+				</div>
+
+				<footer id="footer">
+
+					<div class="info2 mobileonly">
+						<a itemprop="email" class="email2" href="email-rassylka.html"><span>E-MAIL РАССЫЛКА
+								–</span>Выгодные предложения с доставкой!</a>
+						<a itemprop="address" class="adress2" href="shops.html"><span>Найдите</span>свой магазин
+							«ДА»!</a>
+						<!--<a itemprop="vkact" class="vkact" target="_blank" href="https://vk.com/magazin_da"><span>Акции, скидки и призы</span>для наших подписчиков</a>-->
+					</div>
+
+
+					<noindex>
+						<div class="sicons">
+
+							<a target="_blank" href="http://ok.ru/group/53791378178175" rel="nofollow"><img
+									src="/images/sok.png" alt=""></a>
+							<a target="_blank" href="https://vk.com/magazin_da" rel="nofollow"><img
+									src="/images/svk.png" alt=""></a>
+
+							<a target="_blank" href="https://t.me/marketda" rel="nofollow"><img src="/images/tg.png"
+									alt=""></a>
+						</div>
+					</noindex>
+					<div class="foot-nav">
+
+						<ul class="footer-nav">
+							<li><a href="email-rassylka.html">Рассылка</a></li>
+							<li><a href="about/kontakty.html">Контакты</a></li>
+							<li><a href="about/gift.html">Подарочные карты</a></li>
+							<li><a href="chasto-zadavaemye-voprosy.html">Вопросы и ответы</a></li>
+							<li><a href="sitemap.html">Карта сайта</a></li>
+							<li class="mobileonly"><a href="en/home.html">English</a></li>
+						</ul>
+					</div>
+					<div class="footer-panel">
+						<noindex><span class="made">Создание сайта - <a href="http://www.redmarketing.ru"
+									rel="nofollow">Red Marketing</a></span></noindex>
+						<span class="copy">&copy; 2024, Фреш Маркет <a href="about/policy.html"
+								class="nomobile">Политика конфиденциальности</a></span>
+					</div>
+				</footer>
+			</div>
+		</div>
+	</div>
+
+	<div class="info2 mobileonly fbutton" style="display:none;">
+
+		<a class="email3" href="email-rassylka.html"><span>Подписаться на<br>информацию о скидках</span></a>
+
+	</div>
+
+
+
+	<!-- новые скрипты -->
+	<script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>
+	<script src="js/app.js"></script>
+
+</body>
+
+</html>
